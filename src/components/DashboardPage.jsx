@@ -62,7 +62,7 @@ const generateUniqueId = () => Math.random().toString(36).substring(2, 9);
 
 function DashboardPage() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState(initialProjects);
+  const [projects, setProjects] = useState([]);
   const [newProjectName, setNewProjectName] = useState('');
   const [showAddProjectModal, setShowAddProjectModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null); // Para ver tareas de un proyecto específico
@@ -83,7 +83,7 @@ function DashboardPage() {
   };
 
   // Lógica para agregar un nuevo proyecto
-  const handleAddProject =async (e) => {
+  const handleAddProject = async (e) => {
     e.preventDefault();
     // if (newProjectName.trim()) {
     //   const newProject = {
@@ -96,7 +96,7 @@ function DashboardPage() {
     //   setProjects([...projects, newProject]);
 
     try {
-    const response = await fetch('http://127.0.0.1:8000/api/projects', {
+    const response = await fetch('http://localhost:8000/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({nombre: newProjectName.trim()}),
@@ -104,6 +104,10 @@ function DashboardPage() {
       });
       const data = await response.json();
       console.log('Respuesta del servidor:', data);
+      setTimeout(() => {
+        window.location.reload()
+         }, 1500);
+      
       // if (response.ok) {
       //   setMessage('Registro exitoso! Redirigiendo a login...');
       //   setTimeout(() => {
@@ -120,29 +124,45 @@ function DashboardPage() {
     }
 
   // Lógica para agregar una nueva tarea a un proyecto seleccionado
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault();
     if (newTaskDescription.trim() && selectedProject) {
       const newTask = {
-        id: generateUniqueId(),
-        description: newTaskDescription.trim(),
-        assignedTo: newTaskAssignedTo || 'Sin asignar',
-        status: 'Pendiente',
-        dueDate: newTaskDueDate || 'N/A',
-        priority: newTaskPriority,
-        difficulty: newTaskDifficulty,
-        subtasks: [],
+        descripcion: newTaskDescription?.trim(),
+        vencimiento: newTaskDueDate || 'N/A',
+        prioridad: newTaskPriority?.toLowerCase(),
+        dificultad: newTaskDifficulty?.toLowerCase(),
+        project_id: selectedProject?.id
       };
 
-      setProjects(projects.map(proj =>
-        proj.id === selectedProject.id
-          ? { ...proj, tasks: [...proj.tasks, newTask] }
-          : proj
-      ));
-      setSelectedProject(prev => ({ // Actualiza el proyecto seleccionado para que se reflejen las tareas
-        ...prev,
-        tasks: [...prev.tasks, newTask]
-      }));
+      try {
+        const response = await fetch(`http://localhost:8000/api/tasks`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(newTask),
+          credentials: "include"
+        })
+
+        const result = await response.json();
+        console.log(result);
+
+        setTimeout(() => {
+          window.location.reload()
+        }, 1500);
+
+      } catch (error) {
+        console.log(`Error al crear la tarea para el proyecto: ${selectedProject.id}: `, error)
+      }
+
+      // setProjects(projects?.map(proj =>
+      //   proj.id === selectedProject.id
+      //     ? { ...proj, tasks: [...proj.tasks, newTask] }
+      //     : proj
+      // ));
+      // setSelectedProject(prev => ({ // Actualiza el proyecto seleccionado para que se reflejen las tareas
+      //   ...prev,
+      //   tasks: [...prev.tasks, newTask]
+      // }));
       setNewTaskDescription('');
       setNewTaskAssignedTo('');
       setNewTaskDueDate('');
@@ -266,6 +286,85 @@ function DashboardPage() {
     });
   };
 
+        const logout = async() => {
+        try {
+          const response = await fetch("http://localhost:8000/api/auth/logout", {
+            method: "GET",
+            credentials: "include"
+          })
+
+          if(response.ok){
+            setTimeout(() => {
+              navigate('/login');
+            }, 1500);
+          }
+
+          const result = await response.json();
+          console.log(result)
+
+        } catch (error) {
+          console.log("Error al cerrar sesión: ", error)
+        }
+      }
+
+    const getProjectsByUser = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/api/users/user/projects", {
+          method: "GET",
+          credentials: "include"
+        });
+
+        const result = await response.json()
+
+        const dataProjects = result.data
+        // console.log(dataProjects);
+
+        const projectsData = [];
+
+        for(let project of dataProjects) {
+          const dataTasks = await getTasksByProject(project._id)
+            const data = {
+              "id": project?._id,
+              "name": project?.nombre,
+              "status": project?.estado,
+              "owner": "Este Usuario",
+              "tasks": dataTasks?.map(task => {
+                return {
+                  "id": task?._id,
+                  "description": task?.descripcion,
+                  "assignedTo": task?.usuario_asignado ?? "No asignado",
+                  "status": `${task?.estado?.charAt(0).toUpperCase() + task?.estado?.slice(1)}`,
+                  "dueDate": task?.vencimiento ?? "Si Fecha",
+                  "priority": `${task?.prioridad?.charAt(0).toUpperCase() + task?.prioridad?.slice(1)}`,
+                  "difficulty": `${task?.dificultad?.charAt(0).toUpperCase() + task?.dificultad?.slice(1)}`
+                }
+              })
+            } 
+            console.log(data)
+            projectsData.push(data);
+        }
+
+        setProjects(projectsData);
+      } catch (error) {
+        console.log("Error al obtener proyectos del usuario: ", error)
+      }
+    }
+
+    const getTasksByProject = async (id) => {
+      try {
+        const response = await fetch(`http://localhost:8000/api/projects/${id}/tasks`, {
+          method: "GET",
+          credentials: "include"
+        });
+
+        const result = await response.json()
+        // console.log(result)
+        return result.data
+      } catch (error) {
+        console.log("Error al obtener proyectos del usuario: ", error)
+      }
+    }
+
   useEffect(() => {
     // const checkAuth = async () => {
     //   try {
@@ -286,6 +385,9 @@ function DashboardPage() {
     // };
   
     // checkAuth();
+
+    getProjectsByUser()
+
   }, []);
 
   // Función para calcular el estado del proyecto (muy básico por ahora)
@@ -309,7 +411,7 @@ function DashboardPage() {
             {/* <FaPlus className="me-2" /> */}
             Agregar Proyecto
           </Button>
-          <Button variant="danger" onClick={handleLogout} className="ms-3">
+          <Button variant="danger" onClick={logout} className="ms-3">
             Cerrar Sesión
           </Button>
         </Col>
@@ -321,7 +423,7 @@ function DashboardPage() {
           <h4 className="mb-0">Tus Proyectos</h4>
         </Card.Header>
         <Card.Body>
-          {projects.length === 0 ? (
+          {projects?.length == 0 ? (
             <Alert variant="info" className="text-center">No hay proyectos. ¡Crea uno!</Alert>
           ) : (
             <Table responsive hover className="mb-0">
@@ -335,20 +437,20 @@ function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((project) => (
-                  <tr key={project.id}>
-                    <td>{project.name}</td>
+                {projects?.map((project) => (
+                  <tr key={project?.id}>
+                    <td>{project?.name}</td>
                     <td>
                       <span className={`badge ${
-                        getProjectStatus(project.tasks) === 'Completado' ? 'bg-success' :
-                        getProjectStatus(project.tasks) === 'En Curso' ? 'bg-warning text-dark' :
+                        getProjectStatus(project.tasks) === 'completado' ? 'bg-success' :
+                        getProjectStatus(project.tasks) === 'en curso' ? 'bg-warning text-dark' :
                         'bg-secondary'
                       }`}>
                         {getProjectStatus(project.tasks)}
                       </span>
                     </td>
-                    <td>{project.owner}</td>
-                    <td>{project.tasks.length}</td>
+                    <td>{project?.owner}</td>
+                    <td>{project?.tasks?.length}</td>
                     <td>
                       <Button variant="outline-info" size="sm" onClick={() => setSelectedProject(project)}>
                         Ver Tareas
@@ -538,7 +640,7 @@ function DashboardPage() {
                           </td>
                         </tr>
                         {/* Mostrar subtareas si las hay */}
-                        {task.subtasks.length > 0 && (
+                        {task?.subtasks?.length > 0 && (
                           <tr>
                             <td colSpan="7" className="p-0">
                               <ul className="list-group list-group-flush border-top">

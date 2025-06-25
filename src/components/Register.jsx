@@ -29,7 +29,7 @@ function Register() {
     console.log('Intentando registrar:', { username, password });
     // Aquí harías tu llamada a la API de backend, ej:
     try {
-    const response = await fetch('http://127.0.0.1:8000/api/users', {
+    const response = await fetch('http://localhost:8000/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: username, contrasenia: password }),

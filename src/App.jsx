@@ -8,12 +8,35 @@
     import DashboardPage from './components/DashboardPage'; // ¡Importa este componente!
 
     function App() {
+      // const navigate = useNavigate();
       const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+
+      const logout = async() => {
+        try {
+          const response = await fetch("http://localhost:8000/api/auth/logout", {
+            method: "GET",
+            credentials: "include"
+          })
+
+          if(response.ok){
+            setTimeout(() => {
+              // navigate('/login');
+            }, 1500);
+          }
+
+          const result = await response.json();
+          console.log(result)
+
+        } catch (error) {
+          console.log("Error al cerrar sesión: ", error)
+        }
+      }
 
       useEffect(() => {
   const checkAuth = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/auth/check', {
+      const res = await fetch('http://localhost:8000/api/auth/check', {
         method: 'GET',
         credentials: 'include', // 🔥 Esto es importante para que se envíen las cookies
       });
@@ -52,7 +75,7 @@
                 </Nav>
                 {isAuthenticated && (
                   <Nav>
-                    <Nav.Link onClick={""}>Cerrar Sesión</Nav.Link>
+                    <Nav.Link onClick={logout}>Cerrar Sesión</Nav.Link>
                   </Nav>
                 )}
               </Navbar.Collapse>
